@@ -1,16 +1,23 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 
-const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
-  const [isOpen, setIsOpen] = React.useState(false)
+interface DropdownMenuProps {
+  children: React.ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const DropdownMenu = ({ children, open, onOpenChange }: DropdownMenuProps) => {
   return (
     <div className="relative inline-block text-left">
       {React.Children.map(children, child => {
-        if (React.isValidElement(child) && child.type === DropdownMenuTrigger) {
-          return React.cloneElement(child, { onClick: () => setIsOpen(!isOpen) })
-        }
-        if (React.isValidElement(child) && child.type === DropdownMenuContent) {
-          return isOpen ? child : null
+        if (React.isValidElement(child)) {
+          if (child.type === DropdownMenuTrigger) {
+            return React.cloneElement(child, { onClick: () => onOpenChange(!open) })
+          }
+          if (child.type === DropdownMenuContent) {
+            return open ? child : null
+          }
         }
         return child
       })}

@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Search, Home, Maximize2, Menu, Building2, User } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Search, Home, Maximize2, Menu, Building2, User, X, PieChart, BarChart, DollarSign, Users } from 'lucide-react'
 import Link from 'next/link'
 
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { PropertyDetailsPopover } from '@/components/property-details-popover'
+import QuickActions from '@/components/QuickActions'
 
 import {
   DropdownMenu,
@@ -31,6 +32,38 @@ const properties = [
   { id: 6, address: '303 Birch Blvd', city: 'Capital City', state: 'IL', zip: '62701', price: 400000, sqft: 2500, type: 'Commercial', units: 4, dateAdded: '2023-06-01', strategy: 'Commercial', financing: 'Commercial Loan', status: 'Current', bedrooms: 0, bathrooms: 2, amenities: ['Paid Utilities', 'Recreation Space'] },
 ]
 
+// Custom Toggle component (same as in dashboard)
+const Toggle = ({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) => (
+  <div className="flex items-center space-x-2">
+    <Switch
+      id="toggle"
+      checked={checked}
+      onCheckedChange={onChange}
+    />
+    <label
+      htmlFor="toggle"
+      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+    >
+      {label}
+    </label>
+  </div>
+)
+
+// Custom hook to handle clicks outside of a component
+function useOutsideClick(ref: React.RefObject<HTMLElement>, callback: () => void) {
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        callback()
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [ref, callback])
+}
+
 export default function PropertyDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterTypes, setFilterTypes] = useState<string[]>([])
@@ -42,6 +75,23 @@ export default function PropertyDashboard() {
   const [sortOption, setSortOption] = useState('Recently Added')
   const [showAll, setShowAll] = useState(true)
   const [selectedProperty, setSelectedProperty] = useState<any | null>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isAnnual, setIsAnnual] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useOutsideClick(dropdownRef, () => setOpenDropdown(null))
+
+  // Function to toggle dropdown
+  const toggleDropdown = (dropdownName: string) => {
+    if (openDropdown === dropdownName) {
+      setOpenDropdown(null)
+    } else {
+      setOpenDropdown(dropdownName)
+    }
+  }
 
   const filteredAndSortedProperties = properties
     .filter(property => 
@@ -96,50 +146,84 @@ export default function PropertyDashboard() {
     setSelectedProperty(property)
   }
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen)
+  }
+
+  const toggleQuickActions = () => {
+    setIsQuickActionsOpen(!isQuickActionsOpen)
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex-shrink-0 flex items-center">
-                <Home className="h-8 w-8 text-blue-500" />
-                <span className="ml-2 text-2xl font-bold text-gray-900">Doorstop</span>
-              </Link>
+    <div className={`flex h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-800'}`}>
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-300'} p-4 shadow-lg flex flex-col transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <Home className="h-8 w-8 text-blue-600 mr-2" />
+            <span className="text-2xl font-bold">Doorstop</span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        <nav className="flex-grow">
+          <Link href="/">
+            <Button key="Dashboard" variant="ghost" className="w-full justify-start mb-2">
+              <PieChart className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
+          <Link href="/properties">
+            <Button key="Properties" variant="ghost" className="w-full justify-start mb-2">
+              <Home className="mr-2 h-4 w-4" />
+              Properties
+            </Button>
+          </Link>
+          {['Reporting', 'Deal Flow', 'Calculators'].map((item, index) => (
+            <Button key={item} variant="ghost" className="w-full justify-start mb-2">
+              {[BarChart, DollarSign, Users][index] && React.createElement([BarChart, DollarSign, Users][index], { className: "mr-2 h-4 w-4" })}
+              {item}
+            </Button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-8 overflow-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center">
+            <Button variant="ghost" size="icon" className="mr-4" onClick={toggleSidebar}>
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold">Properties</h1>
+          </div>
+          <div className="flex items-center">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input 
+                className={`pl-10 pr-3 py-2 border rounded ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'}`} 
+                placeholder="Search..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <div className="flex-1 flex justify-center px-2 lg:ml-6 lg:justify-end">
-              <div className="max-w-lg w-full lg:max-w-xs flex items-center">
-                <div className="relative flex-grow">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <Input
-                    id="search"
-                    name="search"
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="Search properties"
-                    type="search"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="ml-3 flex-shrink-0">
-                  <Button size="icon" variant="ghost" className="rounded-full w-10 h-10 hover:bg-gray-200">
-                    <User className="h-6 w-6" />
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-2 rounded-full transition-transform hover:scale-110 hover:bg-gray-200 dark:hover:bg-gray-700"
+              onClick={toggleQuickActions}
+            >
+              <User className="h-5 w-5" />
+            </Button>
           </div>
         </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-1 flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-4 items-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+            <div className="flex flex-wrap gap-4 items-center" ref={dropdownRef}>
+              <DropdownMenu open={openDropdown === 'type'} onOpenChange={() => toggleDropdown('type')}>
+                <DropdownMenuTrigger>
                   <Button variant="outline" className="w-[180px]">Filter by type</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
@@ -166,8 +250,9 @@ export default function PropertyDashboard() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+
+              <DropdownMenu open={openDropdown === 'strategy'} onOpenChange={() => toggleDropdown('strategy')}>
+                <DropdownMenuTrigger>
                   <Button variant="outline" className="w-[180px]">Filter by strategy</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
@@ -194,8 +279,8 @@ export default function PropertyDashboard() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <DropdownMenu open={openDropdown === 'financing'} onOpenChange={() => toggleDropdown('financing')}>
+                <DropdownMenuTrigger>
                   <Button variant="outline" className="w-[180px]">Filter by financing</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
@@ -222,6 +307,7 @@ export default function PropertyDashboard() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
               <Select onValueChange={setSortOption} value={sortOption}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
@@ -247,8 +333,8 @@ export default function PropertyDashboard() {
           </div>
 
           <div className="mt-1 flex flex-wrap gap-4 items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <DropdownMenu open={openDropdown === 'bedrooms'} onOpenChange={() => toggleDropdown('bedrooms')}>
+              <DropdownMenuTrigger>
                 <Button variant="outline" className="w-[180px]">Filter by bedrooms</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
@@ -275,8 +361,8 @@ export default function PropertyDashboard() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <DropdownMenu open={openDropdown === 'bathrooms'} onOpenChange={() => toggleDropdown('bathrooms')}>
+              <DropdownMenuTrigger>
                 <Button variant="outline" className="w-[180px]">Filter by bathrooms</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
@@ -303,8 +389,8 @@ export default function PropertyDashboard() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <DropdownMenu open={openDropdown === 'amenities'} onOpenChange={() => toggleDropdown('amenities')}>
+              <DropdownMenuTrigger>
                 <Button variant="outline" className="w-[180px]">Filter by amenities</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
@@ -355,7 +441,7 @@ export default function PropertyDashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-1">
                     <h3 className="text-lg font-medium text-gray-900">{property.address}</h3>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${propertyTypeColors[property.type]}`}>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${propertyTypeColors[property.type as keyof typeof propertyTypeColors]}`}>
                       {property.type}
                     </span>
                   </div>
@@ -409,6 +495,14 @@ export default function PropertyDashboard() {
           )}
         </div>
       </main>
+
+      {/* Quick Actions Sidebar */}
+      <QuickActions 
+        isOpen={isQuickActionsOpen}
+        onClose={toggleQuickActions}
+        isDarkMode={isDarkMode}
+        setIsDarkMode={setIsDarkMode}
+      />
 
       {selectedProperty && (
         <PropertyDetailsPopover

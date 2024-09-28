@@ -1,17 +1,24 @@
 'use client'
 
 import React, { useState } from 'react'
-import { X, Share2, Download, Maximize2, Calendar, PawPrint, DollarSign, Edit, Home, Users, Percent, Images, Expand, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Share2, Download, Maximize2, Calendar, PawPrint, DollarSign, Edit, Home, Users, Percent, Images, Expand, ChevronLeft, ChevronRight, Phone, Mail } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import PerformanceChart from './PerformanceChart';
 
 interface PropertyDetailsPopoverProps {
   property: any;
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface TenantContactInfo {
+  name: string;
+  phone: string;
+  email: string;
 }
 
 export function PropertyDetailsPopover({ property, isOpen, onClose }: PropertyDetailsPopoverProps) {
@@ -22,9 +29,17 @@ export function PropertyDetailsPopover({ property, isOpen, onClose }: PropertyDe
   const [refrigeratorIncluded, setRefrigeratorIncluded] = useState('Yes')
   const [fence, setFence] = useState('Yes')
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isTenantContactOpen, setIsTenantContactOpen] = useState(false);
+  const [tenantContactInfo, setTenantContactInfo] = useState<TenantContactInfo | null>(null);
 
   // Use a placeholder image if the property doesn't have any images
-  const images = property.images || [`https://via.placeholder.com/400x200?text=Property+${property.id}`]
+  const images = property.images || [
+    `https://via.placeholder.com/800x600?text=Property+${property.id}+Image+1`,
+    `https://via.placeholder.com/800x600?text=Property+${property.id}+Image+2`,
+    `https://via.placeholder.com/800x600?text=Property+${property.id}+Image+3`,
+    `https://via.placeholder.com/800x600?text=Property+${property.id}+Image+4`,
+    `https://via.placeholder.com/800x600?text=Property+${property.id}+Image+5`,
+  ]
 
   const nextImage = () => {
     setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length)
@@ -33,6 +48,18 @@ export function PropertyDetailsPopover({ property, isOpen, onClose }: PropertyDe
   const prevImage = () => {
     setCurrentImageIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length)
   }
+
+  const handleTenantClick = () => {
+    if (property.tenant) {
+      // In a real application, you would fetch this data from Firebase
+      setTenantContactInfo({
+        name: property.tenant.name,
+        phone: property.tenant.phone || "+1234567890", // Example phone number
+        email: property.tenant.email || "tenant@example.com" // Example email
+      });
+      setIsTenantContactOpen(true);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -72,18 +99,55 @@ export function PropertyDetailsPopover({ property, isOpen, onClose }: PropertyDe
                 alt={`Property at ${property.address}`}
                 className="w-full h-64 object-cover rounded-lg"
               />
-              {images.length > 1 && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="secondary" size="icon" className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background/90">
-                      <Images className="h-5 w-5" />
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Images className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                  <div className="relative">
+                    <img
+                      src={images[currentImageIndex]}
+                      alt={`Property at ${property.address}`}
+                      className="w-full h-[60vh] object-cover"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute top-1/2 left-2 transform -translate-y-1/2"
+                      onClick={prevImage}
+                    >
+                      <ChevronLeft className="h-6 w-6" />
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-                    {/* Image gallery content */}
-                  </DialogContent>
-                </Dialog>
-              )}
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute top-1/2 right-2 transform -translate-y-1/2"
+                      onClick={nextImage}
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </Button>
+                  </div>
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {images.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`Property at ${property.address} thumbnail ${index + 1}`}
+                        className={`w-16 h-16 object-cover cursor-pointer ${
+                          index === currentImageIndex ? 'border-2 border-blue-500' : ''
+                        }`}
+                        onClick={() => setCurrentImageIndex(index)}
+                      />
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-4 mt-2">
               <div className="flex items-center">
@@ -147,7 +211,38 @@ export function PropertyDetailsPopover({ property, isOpen, onClose }: PropertyDe
               <CardTitle>Tenant Information</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Tenant details */}
+              <div className="flex justify-center">
+                <div className="space-y-2">
+                  {property.tenant ? (
+                    <>
+                      <button 
+                        className="font-medium underline cursor-pointer text-left"
+                        onClick={handleTenantClick}
+                      >
+                        {property.tenant.name}
+                      </button>
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>Lease signed: {property.tenant.leaseSignedDate}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>Lease duration: {property.tenant.leaseDuration}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>Security deposit: ${property.tenant.securityDeposit}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <PawPrint className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>Pets: {property.tenant.pets}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p>No tenant information available</p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -157,7 +252,7 @@ export function PropertyDetailsPopover({ property, isOpen, onClose }: PropertyDe
               <CardTitle>Performance</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Performance chart placeholder */}
+              <PerformanceChart />
             </CardContent>
           </Card>
         </div>
@@ -176,6 +271,37 @@ export function PropertyDetailsPopover({ property, isOpen, onClose }: PropertyDe
           </CardContent>
         </Card>
       </div>
+
+      {/* Tenant Contact Modal */}
+      <Dialog open={isTenantContactOpen} onOpenChange={setIsTenantContactOpen}>
+        <DialogContent>
+          <CardHeader>
+            <CardTitle>Tenant Contact Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {tenantContactInfo && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold">Name</h3>
+                  <p>{tenantContactInfo.name}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Phone</h3>
+                  <a href={`tel:${tenantContactInfo.phone}`} className="text-blue-500 hover:underline">
+                    {tenantContactInfo.phone}
+                  </a>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Email</h3>
+                  <a href={`mailto:${tenantContactInfo.email}`} className="text-blue-500 hover:underline">
+                    {tenantContactInfo.email}
+                  </a>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
